@@ -1,5 +1,7 @@
 #include "gf256_interpolate.h"
 
+#ifdef HAZMAT_QQQQ
+
 // Lagrange Polynomials:
 //                  n
 //                 ---
@@ -31,8 +33,6 @@ int16_t lagrange(
     return result;
 }
 
-
-
 // Interpolate
 // given a polynomial that goes through n points { (x_i, y_i) }
 // calculate the value for y at a given x
@@ -50,12 +50,12 @@ int16_t lagrange(
 // it returns -1
 
 int16_t interpolate(
-    uint8_t n,       // number of points to interpolate
-    const uint8_t* xi,     // x coordinates for points (array of length n)
-    uint32_t yl,     // length of y coordinate array
-    const uint8_t **yij,   // n arrays of yl bytes representing y values
-    uint8_t x,       // x coordinate to interpolate
-    uint8_t* result  // space for yl bytes of results
+    uint8_t n,           // number of points to interpolate
+    const uint8_t* xi,   // x coordinates for points (array of length n)
+    uint32_t yl,         // length of y coordinate array
+    const uint8_t **yij, // n arrays of yl bytes representing y values
+    uint8_t x,           // x coordinate to interpolate
+    uint8_t* result      // space for yl bytes of results
 ) {
     uint8_t lags[n];
       uint8_t i;
@@ -83,3 +83,53 @@ int16_t interpolate(
 
     return yl;
 }
+#else
+#include "hazmat.h"
+int16_t lagrange(
+    uint8_t n,   // number of points to interpolate
+    uint8_t m,   // index of this point
+    const uint8_t *xi, // x coordinates of all points (array of size n)
+    uint8_t x    // x coordinate to evaluate
+) {
+    uint8_t values[n];
+
+    sss_lagrange_basis(values, n, xi, x);
+
+    return values[m];
+}
+
+
+
+int16_t interpolate(
+    uint8_t n,           // number of points to interpolate
+    const uint8_t* xi,   // x coordinates for points (array of length n)
+    uint32_t yl,         // length of y coordinate array
+    const uint8_t **yij, // n arrays of yl bytes representing y values
+    uint8_t x,           // x coordinate to interpolate
+    uint8_t* result      // space for yl bytes of results
+) {
+    uint8_t *y[n];
+    uint8_t yv[32*n];
+    uint8_t r[32];
+
+    for(uint8_t i=0; i<n; i++) {
+        y[i] = &yv[32*i];
+
+        for(uint8_t j=0; j<32; ++j) {
+            if(j<yl) {
+                y[i][j] = yij[i][j];
+            } else {
+                y[i][j] = 0;
+            }
+        }
+    }
+
+    sss_interpolate(r, n, xi, y, x);
+
+    for(uint8_t i=0; i<yl; i++) {
+        result[i] = r[i];
+    }
+
+    return yl;
+}
+#endif
