@@ -1,5 +1,5 @@
 /*
- * Implementation of the hazardous parts of the SSS library
+ * Implementation of the hazardous parts of the Slip39 library
  *
  * Author: Daan Sprenkels <hello@dsprenkels.com>
  *
@@ -265,9 +265,8 @@ gf256_inv(uint32_t r[8], uint32_t x[8])
 }
 
 
-#include <stdio.h>
 void
-sss_lagrange_basis(uint8_t *values,
+hazmat_lagrange_basis(uint8_t *values,
                    uint8_t n,
                    const uint8_t *xc,
                    uint8_t x)
@@ -349,33 +348,58 @@ sss_lagrange_basis(uint8_t *values,
 //   y contains [y0 y1 y2 ... yn-1]
 //   and each of the yi arrays contain [yi_0 yi_i ... yi_31].
 
-void
-sss_interpolate(uint8_t *values,
-                uint8_t n,
-                const uint8_t *xc,
-                const uint8_t **y,  // n sets of 32
-                uint8_t x)
-{
+int16_t interpolate(
+    uint8_t n,           // number of points to interpolate
+    const uint8_t* xi,   // x coordinates for points (array of length n)
+    uint32_t yl,         // length of y coordinate array
+    const uint8_t **yij, // n arrays of yl bytes representing y values
+    uint8_t x,           // x coordinate to interpolate
+    uint8_t* result      // space for yl bytes of results
+) {
+    if(yl > 32) {
+        return ERROR_SECRET_TOO_LONG;
+    }
+
+    // The hazmat gf256 implementation needs the y-coordinate data
+    // to be in 32-byte blocks
+    uint8_t *y[n];
+    uint8_t yv[SECRET_SIZE*n];
+    uint8_t values[SECRET_SIZE];
+
+    memset(yv,0,SECRET_SIZE*n);
+    for(uint8_t i=0; i<n; i++) {
+        y[i] = &yv[SECRET_SIZE*i];
+        memcpy(y[i], yij[i], yl);
+    }
+
     uint8_t lagrange[n];
-    uint8_t i;
-    uint32_t y_slice[8], result[8], temp[8];
+    uint32_t y_slice[8], result_slice[8], temp[8];
 
-    sss_lagrange_basis(lagrange, n, xc, x);
+    hazmat_lagrange_basis(lagrange, n, xi, x);
 
-    bitslice_setall(result, 0);
+    bitslice_setall(result_slice, 0);
 
-    for(i=0; i<n; ++i) {
+    for(uint8_t i=0; i<n; ++i) {
         bitslice(y_slice, y[i]);
         bitslice_setall(temp, lagrange[i]);
         gf256_mul(temp, temp, y_slice);
-        gf256_add(result, temp);
+        gf256_add(result_slice, temp);
     }
 
-    unbitslice(values, result);
+    unbitslice(values, result_slice);
+    // the calling code is only expecting yl bytes back,
+    memcpy(result, values, yl);
+
+    // clean up stack
     memset(lagrange, 0 , sizeof(lagrange));
     memset(y_slice, 0, sizeof(y_slice));
-    memset(result, 0, sizeof(result));
-    memset(temp,0,sizeof(temp));
+    memset(result_slice, 0, sizeof(result_slice));
+    memset(temp, 0, sizeof(temp));
+    memset(y, 0, sizeof(y));
+    memset(yv, 0, sizeof(yv));
+    memset(values, 0, sizeof(values));
+
+    return yl;
 }
 
 

@@ -1,10 +1,23 @@
-#include "gf256_interpolate.h"
+#include "hazmat.h"
 #include <stdio.h>
 
 uint8_t test_lagrange_orthogonality(void);
 uint8_t test_lagrange_zero_one_uniqueness(void);
 uint8_t test_interpolation(void);
 uint8_t test_simple_interpolation(void);
+
+int16_t lagrange(
+    uint8_t n,   // number of points to interpolate
+    uint8_t m,   // index of this point
+    const uint8_t *xi, // x coordinates of all points (array of size n)
+    uint8_t x    // x coordinate to evaluate
+) {
+    uint8_t values[n];
+
+    hazmat_lagrange_basis(values, n, xi, x);
+
+    return values[m];
+}
 
 
 uint8_t test_lagrange_orthogonality(void) {

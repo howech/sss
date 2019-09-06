@@ -9,34 +9,35 @@
  */
 
 
-#ifndef sss_HAZMAT_H_
-#define sss_HAZMAT_H_
+#ifndef HAZMAT_H
+#define HAZMAT_H
 
 #include <inttypes.h>
-
-
-#define sss_KEYSHARE_LEN 33 /* 1 + 32 */
-
-
-/*
- * One share of a cryptographic key which is shared using Shamir's
- * the `sss_create_keyshares` function.
- */
-typedef uint8_t sss_Keyshare[sss_KEYSHARE_LEN];
-
+#include "slip39.h"
 
 void
-sss_lagrange_basis(uint8_t *values,
+hazmat_lagrange_basis(uint8_t *values,
                    uint8_t n,
                    const uint8_t *xc,
                    uint8_t x);
 
-void
-sss_interpolate(uint8_t *values,
-                uint8_t n,
-                const uint8_t *xc,
-                const uint8_t **y,  // n sets of 32
-                uint8_t x);
+
+int16_t
+interpolate(
+    uint8_t n,           // number of points to interpolate
+    const uint8_t* xi,   // x coordinates for points (array of length n)
+    uint32_t yl,         // length of y coordinate array
+    const uint8_t **yij, // n arrays of yl bytes representing y values
+    uint8_t x,           // x coordinate to interpolate
+    uint8_t* result      // space for yl bytes of results
+);
+
+//void
+//sss_interpolate(uint8_t *values,
+//                uint8_t n,
+//                const uint8_t *xc,
+//                const uint8_t **y,  // n sets of 32
+//                uint8_t x);
 
 
-#endif /* sss_HAZMAT_H_ */
+#endif /* HAZMAT_H */
